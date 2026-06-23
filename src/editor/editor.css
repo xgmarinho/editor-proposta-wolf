@@ -5,6 +5,11 @@
    · badges/pills 999px. Acento único: vermelho #ff1d25. */
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Inter:wght@500;600&display=swap");
 
+/* Reset global: sem a margem padrão de 8px do body (que mostrava o fundo
+   branco do navegador como "borda" ao redor do editor dark). */
+html, body { margin: 0; padding: 0; background: #08080a; }
+#root { min-height: 100vh; }
+
 .editor {
   --bg: #08080a;
   --panel: #101012;
