@@ -1,4 +1,4 @@
-import { buildExportHtml, slugify } from "./exportHtml.js";
+import { buildExportHtml } from "./exportHtml.js";
 import viewerTemplate from "./viewerTemplate.js";
 
 const TOKEN_KEY = "wolf.publishToken";
@@ -13,10 +13,10 @@ function getToken() {
 }
 
 // Publica a proposta como HTML self-contido e devolve a URL pública do cliente.
-export async function publishProposal(data) {
+// O slug vem pronto do chamador (já com sufixo aleatório, não-advinhável).
+export async function publishProposal(data, slug) {
   const token = getToken();
   if (!token) throw new Error("Sem token de publicação.");
-  const slug = slugify(data?.meta?.clientName);
   const html = buildExportHtml(viewerTemplate, data);
   const res = await fetch("/api/publish", {
     method: "POST",

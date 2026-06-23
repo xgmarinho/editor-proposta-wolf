@@ -50,7 +50,17 @@ export default function EditorApp() {
   const onPublish = async () => {
     setPublishing(true);
     try {
-      const url = await publishProposal(data);
+      // Slug estável por proposta: gera 1x com sufixo aleatório (link não-advinhável)
+      // e guarda em meta.shareSlug — republicar reusa a mesma URL.
+      let publishData = data;
+      let slug = data.meta.shareSlug;
+      if (!slug) {
+        const rand = Math.random().toString(36).slice(2, 8);
+        slug = `${slugify(data.meta.clientName)}-${rand}`;
+        publishData = { ...data, meta: { ...data.meta, shareSlug: slug } };
+        setData(publishData);
+      }
+      const url = await publishProposal(publishData, slug);
       try { await navigator.clipboard.writeText(url); } catch {}
       prompt("Link do cliente (copiado):", url);
     } catch (e) {
