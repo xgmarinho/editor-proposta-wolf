@@ -22,8 +22,21 @@ function download(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
+// Campos derivados: nunca editados à mão, sempre seguem clientName/validityDays.
+// Mantém a proposta consistente mesmo sem esses campos na sidebar.
+function applyDerived(d) {
+  const days = Number(d.meta.validityDays);
+  return {
+    ...d,
+    overview: { ...d.overview, headingStrong: d.meta.clientName },
+    proposal: { ...d.proposal, validity: `Proposta válida por ${days} dia${days === 1 ? "" : "s"}` },
+  };
+}
+
 export default function EditorApp() {
-  const [data, setData] = useState(() => loadDraft() || cloneProposal(baseProposal));
+  const [data, setData] = useState(() => applyDerived(loadDraft() || cloneProposal(baseProposal)));
+  // Toda mutação passa por aqui → re-deriva os campos dependentes.
+  const updateData = (next) => setData(applyDerived(next));
   const [showSaved, setShowSaved] = useState(false);
   const [copies, setCopies] = useState(() => listCopies());
   const [focus, setFocus] = useState({ key: null, nonce: 0 });
@@ -41,9 +54,9 @@ export default function EditorApp() {
 
   const refreshCopies = () => setCopies(listCopies());
 
-  const onNewFromBase = () => { if (confirm("Começar uma nova proposta a partir da base? O rascunho atual será substituído.")) setData(cloneProposal(baseProposal)); };
+  const onNewFromBase = () => { if (confirm("Começar uma nova proposta a partir da base? O rascunho atual será substituído.")) updateData(cloneProposal(baseProposal)); };
   const onSaveCopy = () => { const name = prompt("Nome da cópia:", data.meta.clientName || "Proposta"); if (name) { saveCopy(name, data); refreshCopies(); alert("Cópia salva."); } };
-  const onImport = (text) => { try { setData(importJson(text)); } catch { alert("JSON inválido."); } };
+  const onImport = (text) => { try { updateData(importJson(text)); } catch { alert("JSON inválido."); } };
   const onExportJson = () => download(`proposta-${slugify(data.meta.clientName)}.json`, exportJson(data), "application/json");
   const onExportHtml = () => download(`proposta-${slugify(data.meta.clientName)}.html`, buildExportHtml(viewerTemplate, data), "text/html");
   const [publishing, setPublishing] = useState(false);
@@ -57,7 +70,7 @@ export default function EditorApp() {
       if (!slug) {
         const rand = Math.random().toString(36).slice(2, 8);
         slug = `${slugify(data.meta.clientName)}-${rand}`;
-        publishData = { ...data, meta: { ...data.meta, shareSlug: slug } };
+        publishData = applyDerived({ ...data, meta: { ...data.meta, shareSlug: slug } });
         setData(publishData);
       }
       const url = await publishProposal(publishData, slug);
@@ -69,7 +82,7 @@ export default function EditorApp() {
       setPublishing(false);
     }
   };
-  const onOpen = (id) => { const c = loadCopy(id); if (c) { setData(cloneProposal(c.data)); setShowSaved(false); } };
+  const onOpen = (id) => { const c = loadCopy(id); if (c) { updateData(cloneProposal(c.data)); setShowSaved(false); } };
   const onDuplicate = (id) => { duplicateCopy(id); refreshCopies(); };
   const onDelete = (id) => { if (confirm("Excluir esta cópia?")) { deleteCopy(id); refreshCopies(); } };
 
@@ -89,7 +102,7 @@ export default function EditorApp() {
             return (
               <React.Fragment key={section.key}>
                 {showGroup && <p className="form-group-label">{section.group}</p>}
-                <SectionForm section={section} data={data} onChange={setData} onFocus={onFocusSection} />
+                <SectionForm section={section} data={data} onChange={updateData} onFocus={onFocusSection} />
               </React.Fragment>
             );
           })}
