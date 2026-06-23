@@ -1,10 +1,14 @@
 import React, { useRef } from "react";
+import wolfLogo from "../assets/wolf-logo.svg";
 
 export default function TopBar({ clientName, onNewFromBase, onSaveCopy, onToggleSaved, onImport, onExportJson, onExportHtml }) {
   const fileRef = useRef(null);
   return (
     <header className="topbar">
-      <strong>Editor · Proposta Wolf®</strong>
+      <div className="topbar-brand">
+        <img src={wolfLogo} alt="" />
+        <span>Agência Wolf®</span>
+      </div>
       <span className="topbar-client">{clientName}</span>
       <div className="topbar-actions">
         <button type="button" onClick={onNewFromBase}>Nova da base</button>
