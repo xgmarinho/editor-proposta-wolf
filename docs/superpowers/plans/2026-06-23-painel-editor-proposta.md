@@ -70,13 +70,23 @@
 - Create: `vite.config.js`, `vitest.config.js`
 - Modify: `package.json`
 
-- [ ] **Step 1: Inicializar repo git local e baseline**
+- [ ] **Step 1: Inicializar repo git local, .gitignore e baseline**
+
+Crie `.gitignore` (raiz do projeto) ANTES do baseline para não rastrear artefatos:
+
+```
+node_modules
+dist
+viewer-dist
+```
+
+Depois:
 
 ```bash
 rtk git init && rtk git add -A && rtk git commit -m "chore: baseline antes do editor"
 ```
 
-Expected: cria `.git` local e um commit inicial com o estado atual do projeto.
+Expected: cria `.git` local e um commit inicial sem `node_modules`/`dist`.
 
 - [ ] **Step 2: Instalar dependências**
 
@@ -152,6 +162,10 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { iconRegistry, iconNames, getIcon } from "./iconRegistry";
 
+// Ícones do @phosphor-icons/react v2 são componentes forwardRef (objetos),
+// não funções — então validamos "é um tipo de componente React válido".
+const isComponent = (c) => c != null && (typeof c === "function" || typeof c === "object");
+
 describe("iconRegistry", () => {
   it("expõe todos os ícones usados pela proposta", () => {
     const required = [
@@ -160,14 +174,14 @@ describe("iconRegistry", () => {
       "CalendarBlank", "UsersThree", "PencilSimpleLine", "VideoCamera",
     ];
     for (const name of required) {
-      expect(iconRegistry[name], `falta ${name}`).toBeTypeOf("function");
+      expect(isComponent(iconRegistry[name]), `falta ${name}`).toBe(true);
     }
   });
   it("iconNames lista as chaves do registro", () => {
     expect(iconNames).toEqual(Object.keys(iconRegistry));
   });
   it("getIcon faz fallback para um ícone válido com nome desconhecido", () => {
-    expect(getIcon("NaoExiste")).toBeTypeOf("function");
+    expect(isComponent(getIcon("NaoExiste"))).toBe(true);
   });
 });
 ```
@@ -819,15 +833,9 @@ rtk node -e "import('./src/editor/viewerTemplate.js').then(m => { const h = m.de
 
 Expected: `tem root: true | tem script inline: true | bytes: <grande>`.
 
-- [ ] **Step 5: Ignorar artefatos no git**
+- [ ] **Step 5: Confirmar `.gitignore`**
 
-Crie/edite `.gitignore` (local do projeto) adicionando:
-
-```
-node_modules
-dist
-viewer-dist
-```
+O `.gitignore` já foi criado na Task 0.1 com `node_modules`, `dist`, `viewer-dist`. Confirme que cobre esses itens; não versione `viewer-dist/`.
 
 > `src/editor/viewerTemplate.js` é versionado (faz parte do build do editor).
 
