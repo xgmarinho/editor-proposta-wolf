@@ -89,11 +89,11 @@ function ListField({ field, data, basePath, onChange }) {
   );
 }
 
-export default function SectionForm({ section, data, onChange }) {
+export default function SectionForm({ section, data, onChange, onFocus }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={"acc" + (open ? " open" : "")}>
-      <button type="button" className="acc-head" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="acc-head" onClick={() => { setOpen((o) => !o); onFocus && onFocus(section.key); }}>
         {section.num
           ? <span className="acc-num">{section.num}</span>
           : <span className="acc-num acc-num--gear"><GearSix weight="fill" size={14} /></span>}

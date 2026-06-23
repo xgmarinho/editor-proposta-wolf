@@ -25,7 +25,11 @@ export default function EditorApp() {
   const [data, setData] = useState(() => loadDraft() || cloneProposal(baseProposal));
   const [showSaved, setShowSaved] = useState(false);
   const [copies, setCopies] = useState(() => listCopies());
+  const [focus, setFocus] = useState({ key: null, nonce: 0 });
   const debounce = useRef(null);
+
+  // Clicar numa seção do menu → rola o preview até ela e destaca (nonce re-dispara).
+  const onFocusSection = (key) => setFocus((f) => ({ key, nonce: f.nonce + 1 }));
 
   // Autosave do rascunho (debounce).
   useEffect(() => {
@@ -60,13 +64,13 @@ export default function EditorApp() {
             return (
               <React.Fragment key={section.key}>
                 {showGroup && <p className="form-group-label">{section.group}</p>}
-                <SectionForm section={section} data={data} onChange={setData} />
+                <SectionForm section={section} data={data} onChange={setData} onFocus={onFocusSection} />
               </React.Fragment>
             );
           })}
         </div>
         <div className="editor-preview">
-          <Preview data={data} />
+          <Preview data={data} focus={focus} />
         </div>
       </div>
       {showSaved && (
