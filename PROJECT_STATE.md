@@ -37,6 +37,13 @@ npm run build:viewer   # regenera src/editor/viewerTemplate.js (necessário se m
 
 Entregue via plano subagent-driven (Fases 0–6). Repo git **próprio** iniciado neste diretório.
 
+## 🌐 No ar (Cloudflare Pages)
+- **URL da equipe:** https://editor-proposta-wolf.pages.dev (sem instalação, abre no navegador).
+- Projeto Pages: `editor-proposta-wolf` (production-branch `main`). SPA estática 100% client-side.
+- **Re-deploy:** `rtk npm run build:viewer && rtk npm run build` e depois
+  `source ~/.bashrc && wrangler pages deploy dist --project-name editor-proposta-wolf --branch main`.
+- Sem domínio custom (decisão do usuário: só `.pages.dev`). Pra adicionar depois: ver skill `/wolf-deploy`.
+
 **O que faz:** a equipe abre o editor (split view: formulário à esquerda, proposta animada
 ao vivo à direita), edita qualquer campo, **adiciona/remove itens** em todos os blocos
 repetíveis (incl. **roadmap/timeline**), faz upload de imagem (base64) e escolhe ícones.
