@@ -1,9 +1,9 @@
 # Estado do projeto - Proposta Wolf (cópia Claude) — HANDOFF
 
-Data: 2026-06-22 (pausa para compactar)
+Data: 2026-06-23 (editor de propostas entregue)
 
 > Cópia separada de `../proposta-wolf` (trabalho do Codex). Toda a continuidade
-> da sessão Claude está AQUI. Na volta, executar o "PLANO DA PRÓXIMA SESSÃO".
+> da sessão Claude está AQUI.
 
 ## Local / como rodar
 
@@ -11,14 +11,57 @@ Data: 2026-06-22 (pausa para compactar)
 
 ```powershell
 npm install
-npm run dev                      # local (127.0.0.1)
-npx vite --host 0.0.0.0 --port 5180   # exposto na rede (celular): http://192.168.0.2:5180/
-npm run build
+npm run dev            # editor (split view) em 127.0.0.1:5173
+npm test               # 25 testes (vitest)
+npm run build          # build do app/editor
+npm run build:viewer   # regenera src/editor/viewerTemplate.js (necessário se mexer no renderizador)
 ```
 
-Arquivos do app: só `src/main.jsx` (todos os componentes) + `src/styles.css`.
-Para compactar: pode EXCLUIR `node_modules/` e `dist/` do zip e rodar
-`npm install` na volta (mais leve).
+## Arquitetura (mudou — não é mais "só main.jsx")
+- `src/data/` — **`baseProposal.js`** (base imutável, todo o conteúdo da proposta em JSON),
+  `iconRegistry.js` (nome→ícone Phosphor + `getIcon`), `proposalOps.js` (helpers imutáveis,
+  `splitHeading`). Todos com `.test.js`.
+- `src/render/` — renderizador compartilhado que lê de `data`: `motion.jsx` (primitivas),
+  `sections.jsx` (todas as seções), `ProposalDocument.jsx`. **NÃO importa `styles.css`**
+  (evita vazamento global) — o CSS entra via iframe (editor) e via `viewer/main.jsx` (export).
+- `src/editor/` — a UI do editor: `EditorApp.jsx` (split view), `Preview.jsx` (iframe + portal),
+  `formSchema.js` (campos declarativos), `fields.jsx`, `SectionForm.jsx`, `TopBar.jsx`,
+  `SavedPanel.jsx`, `storage.js`, `exportHtml.js`, `viewerTemplate.js` (GERADO, 1.45MB).
+- `src/viewer/` — entry standalone que lê `window.__PROPOSTA__` (base do export single-file).
+- `src/main.jsx` — agora só monta `<EditorApp />`. `src/styles.css` — o visual da proposta (inalterado).
+- Spec/plano: `docs/superpowers/specs/2026-06-23-...` e `docs/superpowers/plans/2026-06-23-...`.
+
+---
+
+# ✅ CONCLUÍDO em 2026-06-23 — Editor de propostas (painel CRM-like)
+
+Entregue via plano subagent-driven (Fases 0–6). Repo git **próprio** iniciado neste diretório.
+
+**O que faz:** a equipe abre o editor (split view: formulário à esquerda, proposta animada
+ao vivo à direita), edita qualquer campo, **adiciona/remove itens** em todos os blocos
+repetíveis (incl. **roadmap/timeline**), faz upload de imagem (base64) e escolhe ícones.
+A **base fica intacta** — toda edição é uma cópia. Persistência: autosave de rascunho +
+**Salvar cópia** (lista no navegador) + **Importar/Exportar `.json`**. **Exportar HTML** gera
+um arquivo único autocontido (CSS+JS+imagens base64, **0 requests externos**) que abre offline
+com as animações.
+
+**Verificado ao vivo (Playwright):** paridade visual 1:1 com o original (Escopo +152, Roadmap,
+Preço R$ 12.000); preview reativo; add no roadmap reflete; edição de texto reflete; export
+standalone abre com avatares base64 e sem requests externos; autosave sobrevive a reload.
+25 testes verdes.
+
+**Limitação conhecida (v1):** o nó "final" da timeline (círculo branco) é por `:last-child`
+no CSS, não pelo campo `isFinal` (que ficou inerte). Um passo novo adicionado ao fim herda o
+visual de final. Combina com o comportamento original (✓ vinha do `:last-child` + glifo no
+campo número). Reordenar itens e wirar `isFinal` ficaram **fora do v1**.
+
+**Fora do escopo v1:** ordem das seções fixa; reordenar itens por drag; troca de tema/cores;
+login/backend/deploy automático.
+
+---
+
+## (Histórico) Como era antes
+Arquivo único `src/main.jsx` + `src/styles.css`. Migrado para a arquitetura acima.
 
 ## Fonte de verdade (Figma) — IMPORTANTE
 - Arquivo **Wolf - Proposta Minimalista** › página **Proposta Final**.
