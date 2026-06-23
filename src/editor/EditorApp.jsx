@@ -55,9 +55,15 @@ export default function EditorApp() {
       />
       <div className="editor-body">
         <div className="editor-form">
-          {formSchema.map((section) => (
-            <SectionForm key={section.key} section={section} data={data} onChange={setData} />
-          ))}
+          {formSchema.map((section, i) => {
+            const showGroup = i === 0 || formSchema[i - 1].group !== section.group;
+            return (
+              <React.Fragment key={section.key}>
+                {showGroup && <p className="form-group-label">{section.group}</p>}
+                <SectionForm section={section} data={data} onChange={setData} />
+              </React.Fragment>
+            );
+          })}
         </div>
         <div className="editor-preview">
           <Preview data={data} />

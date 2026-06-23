@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CaretDown, GearSix, Plus, Trash } from "@phosphor-icons/react";
 import { setIn, addItem, removeItem, emptyItem } from "../data/proposalOps.js";
 import { TextField, NumberField, ImageDrop, IconPicker } from "./fields.jsx";
 
@@ -22,7 +23,7 @@ function Field({ field, data, basePath, onChange }) {
   }
 }
 
-// Lista repetível com + adicionar / × remover. Suporta itens objeto e itens string
+// Lista repetível com adicionar / remover. Suporta itens objeto e itens string
 // (itemFields com path []), e aninhamento (ex.: canais > linhas).
 function ListField({ field, data, basePath, onChange }) {
   const listPath = [...basePath, ...field.path];
@@ -31,10 +32,16 @@ function ListField({ field, data, basePath, onChange }) {
   const remove = (i) => onChange(removeItem(data, listPath, i));
   return (
     <div className="listfld">
-      <div className="listfld-head"><span>{field.label}</span><button type="button" onClick={add}>+ adicionar</button></div>
+      <div className="listfld-head">
+        <span>{field.label}</span>
+        <button type="button" onClick={add}><Plus weight="bold" size={12} /> adicionar</button>
+      </div>
       {items.map((_, i) => (
         <div className="listfld-item" key={i}>
-          <div className="listfld-item-head"><small>{field.label} {i + 1}</small><button type="button" className="rm" onClick={() => remove(i)}>× remover</button></div>
+          <div className="listfld-item-head">
+            <small>{field.label} {i + 1}</small>
+            <button type="button" className="rm" onClick={() => remove(i)}><Trash weight="bold" size={12} /> remover</button>
+          </div>
           {field.itemFields.map((f, k) => (
             <Field key={k} field={f} data={data} basePath={[...listPath, i]} onChange={onChange} />
           ))}
@@ -49,7 +56,12 @@ export default function SectionForm({ section, data, onChange }) {
   return (
     <div className={"acc" + (open ? " open" : "")}>
       <button type="button" className="acc-head" onClick={() => setOpen((o) => !o)}>
-        <b>{section.title}</b><i>{open ? "−" : "+"}</i>
+        {section.num
+          ? <span className="acc-num">{section.num}</span>
+          : <span className="acc-num acc-num--gear"><GearSix weight="fill" size={14} /></span>}
+        <span className="acc-title">{section.title}</span>
+        <span className="acc-dot" aria-hidden="true" />
+        <CaretDown className="acc-caret" weight="bold" size={15} />
       </button>
       {open && (
         <div className="acc-body">
