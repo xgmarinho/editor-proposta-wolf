@@ -37,6 +37,9 @@ npm run build:viewer   # regenera src/editor/viewerTemplate.js (necessário se m
 
 Entregue via plano subagent-driven (Fases 0–6). Repo git **próprio** iniciado neste diretório.
 
+## 📦 Repositório
+- **GitHub (privado):** https://github.com/eurodrigobispo/editor-proposta-wolf (branch `main`).
+
 ## 🌐 No ar (Cloudflare Pages)
 - **URL da equipe:** https://editor-proposta-wolf.pages.dev (sem instalação, abre no navegador).
 - Projeto Pages: `editor-proposta-wolf` (production-branch `main`). SPA estática 100% client-side.
