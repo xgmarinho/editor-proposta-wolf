@@ -135,7 +135,8 @@ html, body { margin: 0; padding: 0; background: #08080a; }
   background: var(--panel);
   transition: border-color 0.2s ease;
 }
-.acc.open { border-color: var(--line-strong); }
+/* Foco de edição: a seção aberta ganha o stroke vermelho da marca. */
+.acc.open { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 29, 37, 0.08); }
 .acc-head {
   width: 100%;
   display: flex;
@@ -309,7 +310,7 @@ html, body { margin: 0; padding: 0; background: #08080a; }
   background: var(--panel-2);
   overflow: hidden;
 }
-.listfld-item.open { border-color: var(--line-strong); }
+.listfld-item.open { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 29, 37, 0.07); }
 .listfld-item-head {
   display: flex;
   align-items: center;
