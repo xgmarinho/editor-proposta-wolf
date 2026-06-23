@@ -183,4 +183,4 @@ function Timeline({ steps }) {
   );
 }
 
-export { EASE, listItem, Reveal, CountUp, fmtInt, fmtPad2, fmtThousands, StaggerList, WordReveal, StackList, Timeline };
+export { EASE, listItem, useMotionEnabled, Reveal, CountUp, fmtInt, fmtPad2, fmtThousands, StaggerList, WordReveal, StackList, Timeline };
