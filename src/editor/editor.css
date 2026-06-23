@@ -1,0 +1,41 @@
+* { box-sizing: border-box; }
+.editor { display: flex; flex-direction: column; height: 100vh; font-family: system-ui, sans-serif; color: #0a0a0c; background: #f4f4f6; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: #0a0a0c; color: #fff; }
+.topbar-client { opacity: .65; font-size: 13px; }
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.topbar-actions button { font: inherit; font-size: 12px; padding: 7px 11px; border-radius: 8px; border: 1px solid #2a2a30; background: #16161a; color: #fff; cursor: pointer; }
+.topbar-actions button.primary { background: #e11d2a; border-color: #e11d2a; }
+.editor-body { flex: 1; display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
+.editor-form { overflow-y: auto; padding: 14px; border-right: 1px solid #e1e1e5; background: #fff; }
+.editor-preview { display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 22px; background: #d8d8dd; }
+.preview-frame { width: 375px; height: 812px; border: 0; border-radius: 22px; box-shadow: 0 18px 60px rgba(0,0,0,.28); background: #08080a; }
+.acc { border: 1px solid #e6e6ea; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+.acc-head { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #fafafb; border: 0; font: inherit; cursor: pointer; }
+.acc.open .acc-head { background: #f0f0f3; }
+.acc-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.fld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.fld span { color: #555; }
+.fld input, .fld textarea { font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid #d4d4d9; border-radius: 7px; }
+.imgdrop { border: 1px dashed #c2c2c8; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; color: #888; }
+.imgdrop img { max-width: 100%; max-height: 80px; border-radius: 4px; }
+.iconpick-trigger { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid #d4d4d9; border-radius: 7px; background: #fff; cursor: pointer; }
+.iconpick-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 6px; max-height: 160px; overflow-y: auto; padding: 6px; border: 1px solid #e6e6ea; border-radius: 8px; }
+.iconpick-grid button { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid transparent; border-radius: 6px; background: #f5f5f7; cursor: pointer; font-size: 18px; }
+.iconpick-grid button.active { border-color: #e11d2a; }
+.listfld { border-left: 2px solid #ececef; padding-left: 10px; display: flex; flex-direction: column; gap: 8px; }
+.listfld-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.listfld-head button, .listfld-item-head .rm { font: inherit; font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid #d4d4d9; background: #fff; cursor: pointer; }
+.listfld-item { border: 1px solid #eee; border-radius: 8px; padding: 9px; display: flex; flex-direction: column; gap: 8px; }
+.listfld-item-head { display: flex; justify-content: space-between; align-items: center; }
+.saved-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; z-index: 50; }
+.saved-panel { background: #fff; border-radius: 12px; width: min(440px, 92vw); max-height: 80vh; overflow-y: auto; padding: 16px; }
+.saved-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.saved-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.saved-panel li { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #eee; border-radius: 8px; }
+.saved-name { font: inherit; background: none; border: 0; cursor: pointer; font-weight: 600; flex: 1; text-align: left; }
+.saved-actions { display: flex; gap: 6px; }
+.saved-actions button { font-size: 11px; padding: 4px 8px; border: 1px solid #d4d4d9; border-radius: 6px; background: #fff; cursor: pointer; }
+@media (max-width: 880px) {
+  .editor-body { grid-template-columns: 1fr; }
+  .editor-preview { order: -1; height: 360px; }
+}
