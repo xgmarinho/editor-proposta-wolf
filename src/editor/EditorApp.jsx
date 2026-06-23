@@ -8,6 +8,7 @@ import TopBar from "./TopBar.jsx";
 import SavedPanel from "./SavedPanel.jsx";
 import viewerTemplate from "./viewerTemplate.js";
 import { buildExportHtml, slugify } from "./exportHtml.js";
+import { publishProposal } from "./publish.js";
 import {
   saveDraft, loadDraft, listCopies, saveCopy, loadCopy, duplicateCopy, deleteCopy, exportJson, importJson,
 } from "./storage.js";
@@ -45,6 +46,19 @@ export default function EditorApp() {
   const onImport = (text) => { try { setData(importJson(text)); } catch { alert("JSON inválido."); } };
   const onExportJson = () => download(`proposta-${slugify(data.meta.clientName)}.json`, exportJson(data), "application/json");
   const onExportHtml = () => download(`proposta-${slugify(data.meta.clientName)}.html`, buildExportHtml(viewerTemplate, data), "text/html");
+  const [publishing, setPublishing] = useState(false);
+  const onPublish = async () => {
+    setPublishing(true);
+    try {
+      const url = await publishProposal(data);
+      try { await navigator.clipboard.writeText(url); } catch {}
+      prompt("Link do cliente (copiado):", url);
+    } catch (e) {
+      alert(e.message || "Falha ao publicar.");
+    } finally {
+      setPublishing(false);
+    }
+  };
   const onOpen = (id) => { const c = loadCopy(id); if (c) { setData(cloneProposal(c.data)); setShowSaved(false); } };
   const onDuplicate = (id) => { duplicateCopy(id); refreshCopies(); };
   const onDelete = (id) => { if (confirm("Excluir esta cópia?")) { deleteCopy(id); refreshCopies(); } };
@@ -56,6 +70,7 @@ export default function EditorApp() {
         onNewFromBase={onNewFromBase} onSaveCopy={onSaveCopy}
         onToggleSaved={() => setShowSaved(true)} onImport={onImport}
         onExportJson={onExportJson} onExportHtml={onExportHtml}
+        onPublish={onPublish} publishing={publishing}
       />
       <div className="editor-body">
         <div className="editor-form">

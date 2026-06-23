@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import wolfLogo from "../assets/wolf-logo.svg";
 
-export default function TopBar({ clientName, onNewFromBase, onSaveCopy, onToggleSaved, onImport, onExportJson, onExportHtml }) {
+export default function TopBar({ clientName, onNewFromBase, onSaveCopy, onToggleSaved, onImport, onExportJson, onExportHtml, onPublish, publishing }) {
   const fileRef = useRef(null);
   return (
     <header className="topbar">
@@ -16,7 +16,8 @@ export default function TopBar({ clientName, onNewFromBase, onSaveCopy, onToggle
         <button type="button" onClick={onToggleSaved}>Propostas salvas</button>
         <button type="button" onClick={() => fileRef.current?.click()}>Importar .json</button>
         <button type="button" onClick={onExportJson}>Exportar .json</button>
-        <button type="button" className="primary" onClick={onExportHtml}>Exportar HTML</button>
+        <button type="button" onClick={onExportHtml}>Exportar HTML</button>
+        <button type="button" className="primary" onClick={onPublish} disabled={publishing}>{publishing ? "Gerando…" : "Gerar link do cliente"}</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => onImport(String(r.result)); r.readAsText(f); } e.target.value = ""; }} />
       </div>
