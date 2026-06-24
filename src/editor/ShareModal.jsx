@@ -8,7 +8,6 @@ export default function ShareModal({ url, clientName, onClose }) {
   };
   const msg = `Olá! Segue a proposta da Agência Wolf${clientName ? " para " + clientName : ""}: ${url}`;
   const wa = "https://wa.me/?text=" + encodeURIComponent(msg);
-  const qr = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(url);
 
   return (
     <div className="saved-overlay" onClick={onClose}>
@@ -20,7 +19,6 @@ export default function ShareModal({ url, clientName, onClose }) {
           <a className="sm-btn wa" href={wa} target="_blank" rel="noreferrer">Enviar no WhatsApp</a>
           <a className="sm-btn" href={url} target="_blank" rel="noreferrer">Ver como cliente</a>
         </div>
-        <img className="sm-qr" src={qr} alt="QR code do link" width="180" height="180" />
         <p className="sm-hint">Quando o cliente abrir, a proposta aparece como "Vista" na lista do time.</p>
       </div>
     </div>
