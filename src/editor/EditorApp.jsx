@@ -6,6 +6,8 @@ import SectionForm from "./SectionForm.jsx";
 import Preview from "./Preview.jsx";
 import TopBar from "./TopBar.jsx";
 import SavedPanel from "./SavedPanel.jsx";
+import NewProposalModal from "./NewProposalModal.jsx";
+import { applyPreset, getPreset } from "../data/presets.js";
 import viewerTemplate from "./viewerTemplate.js";
 import { buildExportHtml, slugify } from "./exportHtml.js";
 import { publishProposal } from "./publish.js";
@@ -38,6 +40,8 @@ export default function EditorApp() {
   // Toda mutação passa por aqui → re-deriva os campos dependentes.
   const updateData = (next) => setData(applyDerived(next));
   const [showSaved, setShowSaved] = useState(false);
+  // Primeiro acesso (sem rascunho salvo) abre o início rápido — barreira mínima.
+  const [showNew, setShowNew] = useState(() => !loadDraft());
   const [copies, setCopies] = useState(() => listCopies());
   const [focus, setFocus] = useState({ key: null, nonce: 0 });
   const debounce = useRef(null);
@@ -54,7 +58,10 @@ export default function EditorApp() {
 
   const refreshCopies = () => setCopies(listCopies());
 
-  const onNewFromBase = () => { if (confirm("Começar uma nova proposta a partir da base? O rascunho atual será substituído.")) updateData(cloneProposal(baseProposal)); };
+  const onCreateNew = ({ presetId, clientName, price, validityDays }) => {
+    updateData(applyPreset(getPreset(presetId), { clientName, price, validityDays }));
+    setShowNew(false);
+  };
   const onSaveCopy = () => { const name = prompt("Nome da cópia:", data.meta.clientName || "Proposta"); if (name) { saveCopy(name, data); refreshCopies(); alert("Cópia salva."); } };
   const onImport = (text) => { try { updateData(importJson(text)); } catch { alert("JSON inválido."); } };
   const onExportJson = () => download(`proposta-${slugify(data.meta.clientName)}.json`, exportJson(data), "application/json");
@@ -90,7 +97,7 @@ export default function EditorApp() {
     <div className="editor">
       <TopBar
         clientName={data.meta.clientName}
-        onNewFromBase={onNewFromBase} onSaveCopy={onSaveCopy}
+        onNew={() => setShowNew(true)} onSaveCopy={onSaveCopy}
         onToggleSaved={() => setShowSaved(true)} onImport={onImport}
         onExportJson={onExportJson} onExportHtml={onExportHtml}
         onPublish={onPublish} publishing={publishing}
@@ -113,6 +120,9 @@ export default function EditorApp() {
       </div>
       {showSaved && (
         <SavedPanel copies={copies} onOpen={onOpen} onDuplicate={onDuplicate} onDelete={onDelete} onClose={() => setShowSaved(false)} />
+      )}
+      {showNew && (
+        <NewProposalModal onCreate={onCreateNew} onClose={() => setShowNew(false)} />
       )}
     </div>
   );

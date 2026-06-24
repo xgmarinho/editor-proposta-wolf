@@ -3,7 +3,7 @@ import {
   Cursor, EnvelopeSimple, FolderSimple, InstagramLogo, LinkedinLogo, Notepad,
   PenNib, PencilSimpleLine, Square, SquaresFour, TiktokLogo, UsersThree,
   VideoCamera, WarningCircle, XLogo, MegaphoneSimple, ChartLineUp, Star,
-  Lightning, Palette, Globe, Camera, Microphone, ChatCircle,
+  Lightning, Palette, Globe, Camera, Microphone, ChatCircle, YoutubeLogo,
 } from "@phosphor-icons/react";
 
 // Ícones expostos ao seletor do editor. Nome (string) é o que vai no JSON.
@@ -12,7 +12,7 @@ export const iconRegistry = {
   Cursor, EnvelopeSimple, FolderSimple, InstagramLogo, LinkedinLogo, Notepad,
   PenNib, PencilSimpleLine, Square, SquaresFour, TiktokLogo, UsersThree,
   VideoCamera, WarningCircle, XLogo, MegaphoneSimple, ChartLineUp, Star,
-  Lightning, Palette, Globe, Camera, Microphone, ChatCircle,
+  Lightning, Palette, Globe, Camera, Microphone, ChatCircle, YoutubeLogo,
 };
 
 export const iconNames = Object.keys(iconRegistry);
