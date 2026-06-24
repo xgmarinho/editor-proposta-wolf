@@ -23,6 +23,7 @@ const TOKEN = process.env.PUBLISH_TOKEN || "";
 const OUT_DIR = process.env.OUT_DIR || "/opt/static/orcamento/p";
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const STORE = join(DATA_DIR, "proposals.json");
+const PAC_STORE = join(DATA_DIR, "pacotes.json");
 const BASE_URL = process.env.BASE_URL || "https://orcamento.wolfpacks.com.br";
 const MAX_BYTES = 8 * 1024 * 1024;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,70}$/;
@@ -90,6 +91,26 @@ function saveStore(mutator) {
 }
 function nowIso() { return new Date().toISOString(); }
 function genId() { return "p_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+// --- store de pacotes (catálogo de produtos/serviços) -------------------------
+// Mesmo padrão atômico/serializado das propostas, arquivo separado.
+let pacChain = Promise.resolve();
+async function loadPac() {
+  try { return JSON.parse(await readFile(PAC_STORE, "utf8")); }
+  catch (e) { if (e.code === "ENOENT") return { pacotes: [] }; throw e; }
+}
+function savePac(mutator) {
+  const next = pacChain.then(async () => {
+    const db = await loadPac();
+    const result = await mutator(db);
+    await writeAtomic(PAC_STORE, JSON.stringify(db, null, 2));
+    return result;
+  });
+  pacChain = next.catch(() => {});
+  return next;
+}
+function genPacId() { return "pac_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+const RECORRENCIAS = ["unico", "mensal", "trimestral", "anual"];
 // metadados expostos na lista (sem o blob `data`, que é pesado)
 function meta(p) {
   const { data, ...m } = p; return m;
@@ -241,6 +262,42 @@ const server = http.createServer(async (req, res) => {
         return meta(p);
       });
       return json(res, 200, { url: `${BASE_URL}/p/${slug}`, slug, id: out.id });
+    }
+
+    // --- pacotes (catálogo de produtos/serviços) ---
+    if (req.method === "GET" && url === "/api/pacotes") {
+      const db = await loadPac();
+      const items = [...db.pacotes].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""));
+      return json(res, 200, { count: items.length, items });
+    }
+    if (req.method === "POST" && url === "/api/pacotes") {
+      const body = await readBody(req);
+      const inc = body?.pacote;
+      if (!inc || typeof inc !== "object" || !String(inc.nome || "").trim()) return json(res, 400, { error: "pacote inválido" });
+      const rec = RECORRENCIAS.includes(inc.recorrencia) ? inc.recorrencia : "mensal";
+      const saved = await savePac((db) => {
+        let p = inc.id && db.pacotes.find((x) => x.id === inc.id);
+        if (!p) { p = { id: inc.id || genPacId(), createdAt: nowIso() }; db.pacotes.push(p); }
+        p.nome = String(inc.nome).trim().slice(0, 120);
+        p.categoria = String(inc.categoria || "Outro").slice(0, 60);
+        p.descricao = String(inc.descricao || "").slice(0, 2000);
+        p.preco = Number(inc.preco) || 0;
+        p.recorrencia = rec;
+        p.ativo = inc.ativo !== false;
+        p.itens = Array.isArray(inc.itens) ? inc.itens.map((s) => String(s).slice(0, 200)).slice(0, 40) : [];
+        p.updatedAt = nowIso();
+        return p;
+      });
+      return json(res, 200, saved);
+    }
+    if (req.method === "DELETE" && url.startsWith("/api/pacotes/")) {
+      const id = decodeURIComponent(url.slice("/api/pacotes/".length));
+      const r = await savePac((db) => {
+        const i = db.pacotes.findIndex((x) => x.id === id);
+        if (i === -1) return null;
+        const [p] = db.pacotes.splice(i, 1); return p;
+      });
+      return r ? json(res, 200, { ok: true, id }) : json(res, 404, { error: "não existe" });
     }
 
     // legado
