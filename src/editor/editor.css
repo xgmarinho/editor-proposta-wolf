@@ -518,3 +518,73 @@ html, body { margin: 0; padding: 0; background: #08080a; }
 .sm-btn.wa { background: #1fa861; border-color: #1fa861; color: #fff; }
 .sm-qr { margin: 14px auto 0; display: block; border-radius: 10px; background: #fff; padding: 8px; }
 .sm-hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
+
+/* Topbar back (← Pipeline) */
+.topbar-back {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 13px;
+  color: var(--ink); background: var(--panel-2); border: 1px solid var(--line-strong);
+  border-radius: 9px; padding: 6px 11px; cursor: pointer;
+}
+.topbar-back:hover { border-color: var(--red); color: var(--red); }
+
+/* ===== Kanban board ===== */
+.board { min-height: 100vh; background: var(--bg, #08080a); color: var(--ink); display: flex; flex-direction: column; }
+.board-top {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0;
+  background: var(--bg, #08080a); z-index: 10;
+}
+.board-brand { display: flex; flex-direction: column; }
+.board-brand b { font-size: 15px; }
+.board-brand span { font-size: 11px; color: var(--muted); }
+.board-metrics { display: flex; gap: 22px; margin-left: 8px; }
+.bm { display: flex; flex-direction: column; }
+.bm small { font-size: 10px; color: #9a9aa2; text-transform: uppercase; letter-spacing: 0.04em; }
+.bm b { font-size: 16px; }
+.board-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.board-filter {
+  font: inherit; font-size: 12px; color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--line-strong); border-radius: 9px; padding: 7px 10px;
+}
+.board-refresh {
+  font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line-strong);
+  border-radius: 9px; padding: 7px 9px; cursor: pointer; display: grid; place-items: center;
+}
+.board-refresh:hover { border-color: var(--red); color: var(--red); }
+.board-new {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit; font-weight: 600; font-size: 13px;
+  background: var(--red); color: #fff; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer;
+}
+.board-new:hover { filter: brightness(1.08); }
+.board-msg { color: var(--muted); padding: 30px 20px; }
+.board-cols {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr);
+  gap: 12px; padding: 16px 20px; overflow-x: auto; flex: 1; align-items: start;
+}
+.col { background: rgba(255,255,255,0.028); border: 1px solid var(--line-strong); border-radius: 14px; padding: 10px; min-height: 62vh; transition: border-color .12s, background .12s; }
+.col.over { border-color: var(--red); background: rgba(255,29,37,0.08); }
+.col-head { display: flex; align-items: center; gap: 7px; padding: 4px 4px 10px; }
+.col-head b { font-size: 13px; flex: 1; }
+.col-head small { color: var(--muted); font-size: 11px; }
+.col-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); }
+.d-rascunho { background: #6b6b72; }
+.d-enviada { background: #b9b9c0; }
+.d-vista { background: var(--red); }
+.d-negociacao { background: #e0a93b; }
+.d-ganha { background: #2fa861; }
+.d-perdida { background: #7b3b3b; }
+.col-body { display: flex; flex-direction: column; gap: 8px; }
+.col-empty { color: var(--line-strong); text-align: center; font-size: 12px; padding: 10px 0; }
+.card {
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 11px;
+  padding: 10px 11px; cursor: pointer; user-select: none;
+}
+.card:hover { border-color: rgba(255,255,255,0.35); }
+.card.seen { border-left: 2px solid var(--red); }
+.card-top { display: flex; align-items: flex-start; gap: 6px; }
+.card-client { font-size: 13px; font-weight: 600; flex: 1; line-height: 1.25; }
+.card-del { background: none; border: 0; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.card-del:hover { color: var(--red); }
+.card-price { font-size: 13px; margin: 4px 0; }
+.card-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--muted); }
+.card-views { color: var(--red); font-weight: 600; }

@@ -43,4 +43,5 @@ export async function saveProposal(data, id, author) {
   const out = await call("POST", "/api/proposals", { proposal: { id, author: author || getAuthor(), data } });
   return out;
 }
+export async function patchProposal(id, fields) { return call("PATCH", "/api/proposals/" + encodeURIComponent(id), fields); }
 export async function deleteProposal(id) { return call("DELETE", "/api/proposals/" + encodeURIComponent(id)); }

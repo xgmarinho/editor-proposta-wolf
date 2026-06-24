@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
-import { DotsThree } from "@phosphor-icons/react";
+import { DotsThree, ArrowLeft } from "@phosphor-icons/react";
 import wolfLogo from "../assets/wolf-logo.svg";
 
-export default function TopBar({ clientName, onNew, onSave, saving, onToggleSaved, onImport, onExportJson, onExportHtml, onPublish, publishing }) {
+export default function TopBar({ clientName, onBack, onSave, saving, onImport, onExportJson, onExportHtml, onPublish, publishing }) {
   const fileRef = useRef(null);
   const moreRef = useRef(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -17,14 +17,12 @@ export default function TopBar({ clientName, onNew, onSave, saving, onToggleSave
   return (
     <header className="topbar">
       <div className="topbar-brand">
+        <button type="button" className="topbar-back" onClick={onBack} title="Voltar ao pipeline"><ArrowLeft weight="bold" size={16} /> Pipeline</button>
         <img src={wolfLogo} alt="" />
-        <span>Agência Wolf®</span>
       </div>
       <span className="topbar-client">{clientName}</span>
       <div className="topbar-actions">
-        <button type="button" onClick={onNew}>Nova proposta</button>
         <button type="button" onClick={onSave} disabled={saving}>{saving ? "Salvando…" : "Salvar"}</button>
-        <button type="button" onClick={onToggleSaved}>Propostas do time</button>
         <div className="topbar-more" ref={moreRef}>
           <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-label="Mais opções"><DotsThree weight="bold" size={18} /></button>
           {moreOpen && (

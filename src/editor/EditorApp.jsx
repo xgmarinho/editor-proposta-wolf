@@ -1,19 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { baseProposal } from "../data/baseProposal.js";
-import { cloneProposal } from "../data/proposalOps.js";
 import { formSchema } from "./formSchema.js";
 import SectionForm from "./SectionForm.jsx";
 import Preview from "./Preview.jsx";
 import TopBar from "./TopBar.jsx";
-import ProposalsPanel from "./ProposalsPanel.jsx";
-import NewProposalModal from "./NewProposalModal.jsx";
 import ShareModal from "./ShareModal.jsx";
-import { applyPreset, getPreset } from "../data/presets.js";
 import viewerTemplate from "./viewerTemplate.js";
 import { buildExportHtml, slugify } from "./exportHtml.js";
 import { publishProposal } from "./publish.js";
-import { saveProposal, getProposal, deleteProposal } from "./serverStore.js";
-import { saveDraft, loadDraft, exportJson, importJson } from "./storage.js";
+import { saveProposal } from "./serverStore.js";
+import { saveDraft, exportJson, importJson } from "./storage.js";
 import "./editor.css";
 
 function download(filename, content, type) {
@@ -25,8 +20,7 @@ function download(filename, content, type) {
 }
 
 // Campos derivados: nunca editados à mão, sempre seguem clientName/validityDays.
-// Mantém a proposta consistente mesmo sem esses campos na sidebar.
-function applyDerived(d) {
+export function applyDerived(d) {
   const days = Number(d.meta.validityDays);
   return {
     ...d,
@@ -35,52 +29,41 @@ function applyDerived(d) {
   };
 }
 
-export default function EditorApp() {
-  const [data, setData] = useState(() => applyDerived(loadDraft() || cloneProposal(baseProposal)));
-  // Toda mutação passa por aqui → re-deriva os campos dependentes.
+// Editor de UMA proposta. Recebe a proposta a editar do App (board pipeline-first).
+export default function EditorApp({ initialData, initialId, onBack, onChanged }) {
+  const [data, setData] = useState(() => applyDerived(initialData));
   const updateData = (next) => setData(applyDerived(next));
-  const [showSaved, setShowSaved] = useState(false);
-  // Primeiro acesso (sem rascunho salvo) abre o início rápido — barreira mínima.
-  const [showNew, setShowNew] = useState(() => !loadDraft());
-  const [currentId, setCurrentId] = useState(null); // id no store da proposta em edição
-  const [share, setShare] = useState(null); // { url, clientName } quando publica
+  const [currentId, setCurrentId] = useState(initialId || null);
+  const [share, setShare] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [focus, setFocus] = useState({ key: null, nonce: 0 });
   const debounce = useRef(null);
 
-  // Clicar numa seção do menu → rola o preview até ela e destaca (nonce re-dispara).
   const onFocusSection = (key) => setFocus((f) => ({ key, nonce: f.nonce + 1 }));
 
-  // Autosave do rascunho (debounce).
+  // Autosave do rascunho local (recuperação contra crash; o store do time é a fonte da verdade).
   useEffect(() => {
     clearTimeout(debounce.current);
     debounce.current = setTimeout(() => saveDraft(data), 400);
     return () => clearTimeout(debounce.current);
   }, [data]);
 
-  const onCreateNew = ({ presetId, clientName, price, validityDays }) => {
-    updateData(applyPreset(getPreset(presetId), { clientName, price, validityDays }));
-    setCurrentId(null); // nova proposta = sem id no store até salvar/publicar
-    setShowNew(false);
-  };
-  // Salvar no store do time (cria na 1ª vez, atualiza depois).
   const onSave = async () => {
     setSaving(true);
     try {
       const out = await saveProposal(data, currentId);
       setCurrentId(out.id);
+      onChanged && onChanged();
     } catch (e) { alert(e.message || "Falha ao salvar."); }
     finally { setSaving(false); }
   };
   const onImport = (text) => { try { updateData(importJson(text)); setCurrentId(null); } catch { alert("JSON inválido."); } };
   const onExportJson = () => download(`proposta-${slugify(data.meta.clientName)}.json`, exportJson(data), "application/json");
   const onExportHtml = () => download(`proposta-${slugify(data.meta.clientName)}.html`, buildExportHtml(viewerTemplate, data), "text/html");
-  const [publishing, setPublishing] = useState(false);
   const onPublish = async () => {
     setPublishing(true);
     try {
-      // Slug estável por proposta: gera 1x com sufixo aleatório (link não-advinhável)
-      // e guarda em meta.shareSlug — republicar reusa a mesma URL.
       let publishData = data;
       let slug = data.meta.shareSlug;
       if (!slug) {
@@ -92,28 +75,20 @@ export default function EditorApp() {
       const out = await publishProposal(publishData, slug, currentId);
       setCurrentId(out.id);
       setShare({ url: out.url, clientName: publishData.meta.clientName });
+      onChanged && onChanged();
     } catch (e) {
       alert(e.message || "Falha ao publicar.");
     } finally {
       setPublishing(false);
     }
   };
-  const onOpen = async (id) => {
-    try { const p = await getProposal(id); updateData(cloneProposal(p.data)); setCurrentId(p.id); setShowSaved(false); }
-    catch (e) { alert(e.message || "Falha ao abrir."); }
-  };
-  const onDelete = async (id) => {
-    await deleteProposal(id);
-    if (id === currentId) setCurrentId(null);
-  };
 
   return (
     <div className="editor">
       <TopBar
         clientName={data.meta.clientName}
-        onNew={() => setShowNew(true)} onSave={onSave} saving={saving}
-        onToggleSaved={() => setShowSaved(true)} onImport={onImport}
-        onExportJson={onExportJson} onExportHtml={onExportHtml}
+        onBack={onBack} onSave={onSave} saving={saving}
+        onImport={onImport} onExportJson={onExportJson} onExportHtml={onExportHtml}
         onPublish={onPublish} publishing={publishing}
       />
       <div className="editor-body">
@@ -132,12 +107,6 @@ export default function EditorApp() {
           <Preview data={data} focus={focus} />
         </div>
       </div>
-      {showSaved && (
-        <ProposalsPanel onOpen={onOpen} onDelete={onDelete} onClose={() => setShowSaved(false)} />
-      )}
-      {showNew && (
-        <NewProposalModal onCreate={onCreateNew} onClose={() => setShowNew(false)} />
-      )}
       {share && (
         <ShareModal url={share.url} clientName={share.clientName} onClose={() => setShare(null)} />
       )}
