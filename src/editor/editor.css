@@ -476,3 +476,45 @@ html, body { margin: 0; padding: 0; background: #08080a; }
   background: none; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer;
 }
 .topbar-more-menu button:hover { background: var(--panel-2); }
+
+/* Painel Propostas do time */
+.pp-panel { width: min(560px, 94vw); }
+.pp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.pp-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2);
+}
+.pp-name { flex: 1; text-align: left; background: none; border: 0; cursor: pointer; color: var(--ink); font: inherit; display: flex; flex-direction: column; gap: 2px; }
+.pp-name b { font-size: 14px; font-weight: 600; }
+.pp-name:hover b { color: var(--red); }
+.pp-name small { color: var(--muted); font-size: 11px; }
+.pp-status { font-size: 10px; padding: 3px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--line-strong); }
+.st-draft { color: var(--muted); }
+.st-pub { color: #d8d8de; border-color: rgba(255,255,255,0.3); }
+.st-view { color: #fff; background: var(--red); border-color: var(--red); }
+.pp-actions { display: flex; gap: 6px; align-items: center; }
+.pp-actions button, .pp-open-link {
+  font: inherit; font-size: 11px; padding: 5px 9px; border: 1px solid var(--line-strong);
+  border-radius: 8px; background: none; color: var(--ink); cursor: pointer; text-decoration: none;
+}
+.pp-actions button:hover, .pp-open-link:hover { border-color: var(--red); color: var(--red); }
+.pp-link { background: none; border: 0; color: var(--red); cursor: pointer; font: inherit; text-decoration: underline; }
+
+/* Share modal */
+.sm-panel { width: min(420px, 92vw); text-align: center; }
+.sm-url {
+  font-size: 13px; word-break: break-all; cursor: pointer; user-select: all;
+  background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 10px;
+  padding: 10px 12px; margin: 6px 0 14px; color: var(--ink);
+}
+.sm-actions { display: flex; flex-direction: column; gap: 8px; }
+.sm-btn {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--ink);
+  cursor: pointer; text-decoration: none; display: block;
+}
+.sm-btn:hover { border-color: var(--red); }
+.sm-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+.sm-btn.wa { background: #1fa861; border-color: #1fa861; color: #fff; }
+.sm-qr { margin: 14px auto 0; display: block; border-radius: 10px; background: #fff; padding: 8px; }
+.sm-hint { color: var(--muted); font-size: 11px; margin-top: 12px; }

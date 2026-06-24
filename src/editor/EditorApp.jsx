@@ -5,15 +5,15 @@ import { formSchema } from "./formSchema.js";
 import SectionForm from "./SectionForm.jsx";
 import Preview from "./Preview.jsx";
 import TopBar from "./TopBar.jsx";
-import SavedPanel from "./SavedPanel.jsx";
+import ProposalsPanel from "./ProposalsPanel.jsx";
 import NewProposalModal from "./NewProposalModal.jsx";
+import ShareModal from "./ShareModal.jsx";
 import { applyPreset, getPreset } from "../data/presets.js";
 import viewerTemplate from "./viewerTemplate.js";
 import { buildExportHtml, slugify } from "./exportHtml.js";
 import { publishProposal } from "./publish.js";
-import {
-  saveDraft, loadDraft, listCopies, saveCopy, loadCopy, duplicateCopy, deleteCopy, exportJson, importJson,
-} from "./storage.js";
+import { saveProposal, getProposal, deleteProposal } from "./serverStore.js";
+import { saveDraft, loadDraft, exportJson, importJson } from "./storage.js";
 import "./editor.css";
 
 function download(filename, content, type) {
@@ -42,7 +42,9 @@ export default function EditorApp() {
   const [showSaved, setShowSaved] = useState(false);
   // Primeiro acesso (sem rascunho salvo) abre o início rápido — barreira mínima.
   const [showNew, setShowNew] = useState(() => !loadDraft());
-  const [copies, setCopies] = useState(() => listCopies());
+  const [currentId, setCurrentId] = useState(null); // id no store da proposta em edição
+  const [share, setShare] = useState(null); // { url, clientName } quando publica
+  const [saving, setSaving] = useState(false);
   const [focus, setFocus] = useState({ key: null, nonce: 0 });
   const debounce = useRef(null);
 
@@ -56,14 +58,21 @@ export default function EditorApp() {
     return () => clearTimeout(debounce.current);
   }, [data]);
 
-  const refreshCopies = () => setCopies(listCopies());
-
   const onCreateNew = ({ presetId, clientName, price, validityDays }) => {
     updateData(applyPreset(getPreset(presetId), { clientName, price, validityDays }));
+    setCurrentId(null); // nova proposta = sem id no store até salvar/publicar
     setShowNew(false);
   };
-  const onSaveCopy = () => { const name = prompt("Nome da cópia:", data.meta.clientName || "Proposta"); if (name) { saveCopy(name, data); refreshCopies(); alert("Cópia salva."); } };
-  const onImport = (text) => { try { updateData(importJson(text)); } catch { alert("JSON inválido."); } };
+  // Salvar no store do time (cria na 1ª vez, atualiza depois).
+  const onSave = async () => {
+    setSaving(true);
+    try {
+      const out = await saveProposal(data, currentId);
+      setCurrentId(out.id);
+    } catch (e) { alert(e.message || "Falha ao salvar."); }
+    finally { setSaving(false); }
+  };
+  const onImport = (text) => { try { updateData(importJson(text)); setCurrentId(null); } catch { alert("JSON inválido."); } };
   const onExportJson = () => download(`proposta-${slugify(data.meta.clientName)}.json`, exportJson(data), "application/json");
   const onExportHtml = () => download(`proposta-${slugify(data.meta.clientName)}.html`, buildExportHtml(viewerTemplate, data), "text/html");
   const [publishing, setPublishing] = useState(false);
@@ -80,24 +89,29 @@ export default function EditorApp() {
         publishData = applyDerived({ ...data, meta: { ...data.meta, shareSlug: slug } });
         setData(publishData);
       }
-      const url = await publishProposal(publishData, slug);
-      try { await navigator.clipboard.writeText(url); } catch {}
-      prompt("Link do cliente (copiado):", url);
+      const out = await publishProposal(publishData, slug, currentId);
+      setCurrentId(out.id);
+      setShare({ url: out.url, clientName: publishData.meta.clientName });
     } catch (e) {
       alert(e.message || "Falha ao publicar.");
     } finally {
       setPublishing(false);
     }
   };
-  const onOpen = (id) => { const c = loadCopy(id); if (c) { updateData(cloneProposal(c.data)); setShowSaved(false); } };
-  const onDuplicate = (id) => { duplicateCopy(id); refreshCopies(); };
-  const onDelete = (id) => { if (confirm("Excluir esta cópia?")) { deleteCopy(id); refreshCopies(); } };
+  const onOpen = async (id) => {
+    try { const p = await getProposal(id); updateData(cloneProposal(p.data)); setCurrentId(p.id); setShowSaved(false); }
+    catch (e) { alert(e.message || "Falha ao abrir."); }
+  };
+  const onDelete = async (id) => {
+    await deleteProposal(id);
+    if (id === currentId) setCurrentId(null);
+  };
 
   return (
     <div className="editor">
       <TopBar
         clientName={data.meta.clientName}
-        onNew={() => setShowNew(true)} onSaveCopy={onSaveCopy}
+        onNew={() => setShowNew(true)} onSave={onSave} saving={saving}
         onToggleSaved={() => setShowSaved(true)} onImport={onImport}
         onExportJson={onExportJson} onExportHtml={onExportHtml}
         onPublish={onPublish} publishing={publishing}
@@ -119,10 +133,13 @@ export default function EditorApp() {
         </div>
       </div>
       {showSaved && (
-        <SavedPanel copies={copies} onOpen={onOpen} onDuplicate={onDuplicate} onDelete={onDelete} onClose={() => setShowSaved(false)} />
+        <ProposalsPanel onOpen={onOpen} onDelete={onDelete} onClose={() => setShowSaved(false)} />
       )}
       {showNew && (
         <NewProposalModal onCreate={onCreateNew} onClose={() => setShowNew(false)} />
+      )}
+      {share && (
+        <ShareModal url={share.url} clientName={share.clientName} onClose={() => setShare(null)} />
       )}
     </div>
   );
