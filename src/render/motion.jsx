@@ -1,5 +1,12 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useContext, createContext } from "react";
 import { animate, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+
+// Quando true, números (CountUp) mostram o valor final direto, sem animar.
+// Usado no PREVIEW do editor: lá a proposta renderiza dentro de um iframe via
+// portal e o IntersectionObserver do useInView (que roda na janela-pai) nunca
+// marca inView -> o count-up ficaria travado em 0. No export/publicado não há
+// iframe, então o default (false) mantém a animação no scroll real.
+const StaticNumbersContext = createContext(false);
 
 // --- Motion system -----------------------------------------------------------
 // Sequential, Framer-like choreography. Every section reveals its blocks in
@@ -38,10 +45,11 @@ const fmtThousands = (v) => Math.round(v).toLocaleString("pt-BR");
 function CountUp({ to, format = fmtInt, duration = 1.5, delay = 0.15 }) {
   const ref = useRef(null);
   const reduce = useReducedMotion();
+  const isStatic = useContext(StaticNumbersContext);
   const inView = useInView(ref, { once: true, amount: 0.6, margin: "0px 0px -8% 0px" });
   useEffect(() => {
     const node = ref.current;
-    if (!node || reduce || !inView) return undefined;
+    if (!node || reduce || isStatic || !inView) return undefined;
     const controls = animate(0, to, {
       duration,
       delay,
@@ -51,8 +59,8 @@ function CountUp({ to, format = fmtInt, duration = 1.5, delay = 0.15 }) {
       },
     });
     return () => controls.stop();
-  }, [inView, to, reduce, duration, delay, format]);
-  return <span ref={ref}>{format(reduce ? to : 0)}</span>;
+  }, [inView, to, reduce, isStatic, duration, delay, format]);
+  return <span ref={ref}>{format(reduce || isStatic ? to : 0)}</span>;
 }
 
 // Sequential list: the container is present from the start; its children enter
@@ -183,4 +191,4 @@ function Timeline({ steps }) {
   );
 }
 
-export { EASE, listItem, useMotionEnabled, Reveal, CountUp, fmtInt, fmtPad2, fmtThousands, StaggerList, WordReveal, StackList, Timeline };
+export { EASE, listItem, useMotionEnabled, Reveal, CountUp, StaticNumbersContext, fmtInt, fmtPad2, fmtThousands, StaggerList, WordReveal, StackList, Timeline };

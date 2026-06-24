@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import ProposalDocument from "../render/ProposalDocument.jsx";
+import { StaticNumbersContext } from "../render/motion.jsx";
 import proposalCss from "../styles.css?inline";
 
 // Mapa: chave da seção no editor -> seletor da seção na proposta renderizada.
@@ -102,7 +103,12 @@ export default function Preview({ data, focus }) {
 
   return (
     <iframe ref={frameRef} title="preview" className="preview-frame" onLoad={init}>
-      {body && createPortal(<ProposalDocument data={data} />, body)}
+      {body && createPortal(
+        <StaticNumbersContext.Provider value={true}>
+          <ProposalDocument data={data} />
+        </StaticNumbersContext.Provider>,
+        body,
+      )}
     </iframe>
   );
 }
