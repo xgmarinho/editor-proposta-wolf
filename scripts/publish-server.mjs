@@ -79,6 +79,25 @@ function meta(p) {
   const { data, ...m } = p; return m;
 }
 
+// --- estágio (coluna do kanban) -----------------------------------------------
+// Ordem do funil. ganha/perdida = terminais (mesmo rank, não auto-avançam).
+const STAGES = ["rascunho", "enviada", "vista", "negociacao", "ganha", "perdida"];
+const RANK = { rascunho: 0, enviada: 1, vista: 2, negociacao: 3, ganha: 4, perdida: 4 };
+const TERMINAL = new Set(["ganha", "perdida"]);
+// estágio efetivo de um registro (deriva de status p/ propostas antigas sem stage)
+function stageOf(p) {
+  if (p.stage && RANK[p.stage] != null) return p.stage;
+  if (p.status === "viewed") return "vista";
+  if (p.status === "published") return "enviada";
+  return "rascunho";
+}
+// avança o estágio só pra frente e nunca a partir de um terminal
+function bumpStage(p, target) {
+  const cur = stageOf(p);
+  if (TERMINAL.has(cur)) return;
+  if (RANK[target] > RANK[cur]) p.stage = target;
+}
+
 // injeta um pixel de tracking no HTML publicado (mesma origem) — registra abertura
 function injectTracking(html, slug) {
   const tag = `<script>try{fetch(${JSON.stringify("/api/track/" + slug)},{method:"GET",keepalive:true})}catch(e){}</script>`;
@@ -97,7 +116,7 @@ const server = http.createServer(async (req, res) => {
       if (SLUG_RE.test(slug)) {
         await saveStore((db) => {
           const p = db.proposals.find((x) => x.slug === slug);
-          if (p) { p.views = (p.views || 0) + 1; p.lastViewedAt = nowIso(); if (p.status === "published") p.status = "viewed"; }
+          if (p) { p.views = (p.views || 0) + 1; p.lastViewedAt = nowIso(); if (p.status === "published") p.status = "viewed"; bumpStage(p, "vista"); }
         });
       }
       res.writeHead(204); return res.end();
@@ -109,7 +128,9 @@ const server = http.createServer(async (req, res) => {
     // lista
     if (req.method === "GET" && url === "/api/proposals") {
       const db = await loadStore();
-      const items = db.proposals.map(meta).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      // garante `stage` em todo item (deriva de status p/ registros antigos)
+      const items = db.proposals.map((p) => ({ ...meta(p), stage: stageOf(p) }))
+        .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
       return json(res, 200, { count: items.length, items });
     }
     // proposta completa
@@ -126,7 +147,7 @@ const server = http.createServer(async (req, res) => {
       if (!inc || typeof inc !== "object" || !inc.data) return json(res, 400, { error: "proposal inválida" });
       const saved = await saveStore((db) => {
         let p = inc.id && db.proposals.find((x) => x.id === inc.id);
-        if (!p) { p = { id: inc.id || genId(), createdAt: nowIso(), views: 0, status: "draft" }; db.proposals.push(p); }
+        if (!p) { p = { id: inc.id || genId(), createdAt: nowIso(), views: 0, status: "draft", stage: "rascunho" }; db.proposals.push(p); }
         p.clientName = inc.data?.meta?.clientName || p.clientName || "Sem nome";
         p.presetId = inc.data?.meta?.presetId || p.presetId || null;
         p.author = inc.author || p.author || "—";
@@ -138,6 +159,26 @@ const server = http.createServer(async (req, res) => {
       });
       return json(res, 200, saved);
     }
+    // PATCH parcial: estágio (drag do kanban) + campos de CRM
+    if (req.method === "PATCH" && url.startsWith("/api/proposals/")) {
+      const id = decodeURIComponent(url.slice("/api/proposals/".length));
+      const body = await readBody(req);
+      if (body.stage != null && !STAGES.includes(body.stage)) return json(res, 400, { error: "stage inválido" });
+      const saved = await saveStore((db) => {
+        const p = db.proposals.find((x) => x.id === id);
+        if (!p) return null;
+        // drag manual seta estágio direto (inclusive regredir/terminal) — diferente do auto-avanço
+        if (body.stage != null) p.stage = body.stage;
+        if (body.contact != null) p.contact = String(body.contact).slice(0, 120);
+        if (body.notes != null) p.notes = String(body.notes).slice(0, 4000);
+        if (body.nextAction !== undefined) p.nextAction = body.nextAction; // {text, date} ou null
+        if (body.lostReason != null) p.lostReason = String(body.lostReason).slice(0, 300);
+        p.updatedAt = nowIso();
+        return meta(p);
+      });
+      return saved ? json(res, 200, saved) : json(res, 404, { error: "não existe" });
+    }
+
     // delete (store + HTML publicado)
     if (req.method === "DELETE" && url.startsWith("/api/proposals/")) {
       const id = decodeURIComponent(url.slice("/api/proposals/".length));
@@ -171,6 +212,7 @@ const server = http.createServer(async (req, res) => {
         p.price = m.price ?? p.price ?? null;
         if (m.data) p.data = m.data;
         p.status = "published";
+        bumpStage(p, "enviada");
         p.publishedAt = nowIso();
         p.updatedAt = nowIso();
         return meta(p);
