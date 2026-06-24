@@ -26,6 +26,22 @@ const STORE = join(DATA_DIR, "proposals.json");
 const BASE_URL = process.env.BASE_URL || "https://orcamento.wolfpacks.com.br";
 const MAX_BYTES = 8 * 1024 * 1024;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,70}$/;
+// Alerta WhatsApp opcional (Evolution). Sem as envs, vira no-op silencioso.
+const EVO_URL = process.env.EVOLUTION_URL || "";
+const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE || "";
+const EVO_KEY = process.env.EVOLUTION_KEY || "";
+const ALERT_WHATSAPP = process.env.ALERT_WHATSAPP || ""; // número que recebe o alerta
+async function notifyOpen(p) {
+  if (!EVO_URL || !EVO_INSTANCE || !EVO_KEY || !ALERT_WHATSAPP) return; // desativado
+  const text = `🔥 Proposta aberta pelo cliente\n\n*${p.clientName}* (${p.author || "—"}) acabou de abrir a proposta.\n${BASE_URL}/p/${p.slug}`;
+  try {
+    await fetch(`${EVO_URL.replace(/\/$/, "")}/message/sendText/${EVO_INSTANCE}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: EVO_KEY },
+      body: JSON.stringify({ number: ALERT_WHATSAPP, text }),
+    });
+  } catch { /* alerta é best-effort; nunca quebra o tracking */ }
+}
 
 if (!TOKEN) { console.error("PUBLISH_TOKEN ausente"); process.exit(1); }
 
@@ -114,10 +130,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.startsWith("/api/track/")) {
       const slug = decodeURIComponent(url.slice("/api/track/".length)).trim();
       if (SLUG_RE.test(slug)) {
-        await saveStore((db) => {
+        const toAlert = await saveStore((db) => {
           const p = db.proposals.find((x) => x.slug === slug);
-          if (p) { p.views = (p.views || 0) + 1; p.lastViewedAt = nowIso(); if (p.status === "published") p.status = "viewed"; bumpStage(p, "vista"); }
+          if (!p) return null;
+          const firstOpen = !p.alertedAt; // alerta só na 1ª abertura (dedup)
+          p.views = (p.views || 0) + 1; p.lastViewedAt = nowIso();
+          if (p.status === "published") p.status = "viewed";
+          bumpStage(p, "vista");
+          if (firstOpen) { p.alertedAt = nowIso(); return meta(p); }
+          return null;
         });
+        if (toAlert) notifyOpen(toAlert); // best-effort, não bloqueia a resposta
       }
       res.writeHead(204); return res.end();
     }
