@@ -1,18 +1,30 @@
-// Writer service do editor de orçamentos. Endpoints (token, exceto /health):
-//   POST /api/publish {slug, html}  -> grava <slug>.html, devolve url
-//   GET  /api/list                  -> lista propostas publicadas
-//   POST /api/delete  {slug}        -> remove <slug>.html
-//   GET  /health                    -> ok (sem token, p/ healthcheck)
-// Zero dependências. Roda no HOST (container), atrás do Caddy. Bind loopback no host.
+// Writer + store do editor de orçamentos. Zero dependências.
+// Persistência: JSON-file atômico (data/proposals.json) — fonte da verdade do
+// time (multi-device). localStorage do navegador vira só cache/rascunho local.
+//
+// Auth: token de time único (PUBLISH_TOKEN) no header x-publish-token. Todos
+// veem todas as propostas. `author` é só atribuição (texto livre), não login.
+//
+// Endpoints (token, exceto /health, /p tracking):
+//   POST   /api/publish            {slug, html, id?, meta?}  -> grava HTML + upsert store
+//   GET    /api/proposals                                    -> lista (metadados)
+//   GET    /api/proposals/:id                                -> proposta completa
+//   POST   /api/proposals          {proposal}                -> upsert (rascunho/edição)
+//   DELETE /api/proposals/:id                                -> remove (store + HTML)
+//   GET    /api/track/:slug        (sem token)               -> +1 view, status=viewed
+//   GET    /health                 (sem token)               -> ok
+//   [legado] GET /api/list, POST /api/delete                 -> mantidos
 import http from "node:http";
-import { writeFile, rename, mkdir, readdir, stat, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { writeFile, rename, mkdir, readFile, unlink } from "node:fs/promises";
+import { join, dirname } from "node:path";
 
 const PORT = Number(process.env.PORT || 8132);
 const TOKEN = process.env.PUBLISH_TOKEN || "";
 const OUT_DIR = process.env.OUT_DIR || "/opt/static/orcamento/p";
+const DATA_DIR = process.env.DATA_DIR || "/data";
+const STORE = join(DATA_DIR, "proposals.json");
 const BASE_URL = process.env.BASE_URL || "https://orcamento.wolfpacks.com.br";
-const MAX_BYTES = 8 * 1024 * 1024; // 8MB (HTML com imagens base64)
+const MAX_BYTES = 8 * 1024 * 1024;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,70}$/;
 
 if (!TOKEN) { console.error("PUBLISH_TOKEN ausente"); process.exit(1); }
@@ -21,7 +33,6 @@ function json(res, code, obj) {
   res.writeHead(code, { "Content-Type": "application/json" });
   res.end(JSON.stringify(obj));
 }
-
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
@@ -37,49 +48,149 @@ function readBody(req) {
     req.on("error", reject);
   });
 }
+async function writeAtomic(path, content) {
+  await mkdir(dirname(path), { recursive: true });
+  const tmp = path + ".tmp";
+  await writeFile(tmp, content, "utf8");
+  await rename(tmp, path);
+}
+
+// --- store (serializado: 1 processo, escritas encadeadas) ---------------------
+let writeChain = Promise.resolve();
+async function loadStore() {
+  try { return JSON.parse(await readFile(STORE, "utf8")); }
+  catch (e) { if (e.code === "ENOENT") return { proposals: [] }; throw e; }
+}
+function saveStore(mutator) {
+  // encadeia mutações para evitar corrida de leitura-modificação-escrita
+  const next = writeChain.then(async () => {
+    const db = await loadStore();
+    const result = await mutator(db);
+    await writeAtomic(STORE, JSON.stringify(db, null, 2));
+    return result;
+  });
+  writeChain = next.catch(() => {}); // não trava a cadeia em erro
+  return next;
+}
+function nowIso() { return new Date().toISOString(); }
+function genId() { return "p_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+// metadados expostos na lista (sem o blob `data`, que é pesado)
+function meta(p) {
+  const { data, ...m } = p; return m;
+}
+
+// injeta um pixel de tracking no HTML publicado (mesma origem) — registra abertura
+function injectTracking(html, slug) {
+  const tag = `<script>try{fetch(${JSON.stringify("/api/track/" + slug)},{method:"GET",keepalive:true})}catch(e){}</script>`;
+  return html.includes("</body>") ? html.replace("</body>", tag + "</body>") : html + tag;
+}
 
 const server = http.createServer(async (req, res) => {
   try {
-    if (req.method === "GET" && req.url === "/health") return json(res, 200, { ok: true });
+    const url = req.url || "";
 
-    // tudo abaixo exige token
+    if (req.method === "GET" && url === "/health") return json(res, 200, { ok: true });
+
+    // tracking de abertura (público, sem token)
+    if (req.method === "GET" && url.startsWith("/api/track/")) {
+      const slug = decodeURIComponent(url.slice("/api/track/".length)).trim();
+      if (SLUG_RE.test(slug)) {
+        await saveStore((db) => {
+          const p = db.proposals.find((x) => x.slug === slug);
+          if (p) { p.views = (p.views || 0) + 1; p.lastViewedAt = nowIso(); if (p.status === "published") p.status = "viewed"; }
+        });
+      }
+      res.writeHead(204); return res.end();
+    }
+
+    // tudo abaixo exige token de time
     if (req.headers["x-publish-token"] !== TOKEN) return json(res, 401, { error: "unauthorized" });
 
-    if (req.method === "POST" && req.url === "/api/publish") {
+    // lista
+    if (req.method === "GET" && url === "/api/proposals") {
+      const db = await loadStore();
+      const items = db.proposals.map(meta).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      return json(res, 200, { count: items.length, items });
+    }
+    // proposta completa
+    if (req.method === "GET" && url.startsWith("/api/proposals/")) {
+      const id = decodeURIComponent(url.slice("/api/proposals/".length));
+      const db = await loadStore();
+      const p = db.proposals.find((x) => x.id === id);
+      return p ? json(res, 200, p) : json(res, 404, { error: "não existe" });
+    }
+    // upsert (rascunho/edição) — não publica
+    if (req.method === "POST" && url === "/api/proposals") {
+      const body = await readBody(req);
+      const inc = body?.proposal;
+      if (!inc || typeof inc !== "object" || !inc.data) return json(res, 400, { error: "proposal inválida" });
+      const saved = await saveStore((db) => {
+        let p = inc.id && db.proposals.find((x) => x.id === inc.id);
+        if (!p) { p = { id: inc.id || genId(), createdAt: nowIso(), views: 0, status: "draft" }; db.proposals.push(p); }
+        p.clientName = inc.data?.meta?.clientName || p.clientName || "Sem nome";
+        p.presetId = inc.data?.meta?.presetId || p.presetId || null;
+        p.author = inc.author || p.author || "—";
+        p.price = inc.data?.proposal?.price?.value ?? p.price ?? null;
+        p.slug = inc.data?.meta?.shareSlug || p.slug || null;
+        p.data = inc.data;
+        p.updatedAt = nowIso();
+        return meta(p);
+      });
+      return json(res, 200, saved);
+    }
+    // delete (store + HTML publicado)
+    if (req.method === "DELETE" && url.startsWith("/api/proposals/")) {
+      const id = decodeURIComponent(url.slice("/api/proposals/".length));
+      const r = await saveStore((db) => {
+        const i = db.proposals.findIndex((x) => x.id === id);
+        if (i === -1) return null;
+        const [p] = db.proposals.splice(i, 1); return p;
+      });
+      if (!r) return json(res, 404, { error: "não existe" });
+      if (r.slug) { try { await unlink(join(OUT_DIR, r.slug + ".html")); } catch {} }
+      return json(res, 200, { ok: true, id });
+    }
+
+    // PUBLICAR: grava HTML + marca no store
+    if (req.method === "POST" && url === "/api/publish") {
       const body = await readBody(req);
       const slug = String(body?.slug || "").trim();
       const html = body?.html;
       if (!SLUG_RE.test(slug)) return json(res, 400, { error: "slug inválido" });
       if (typeof html !== "string" || !html.includes("<html")) return json(res, 400, { error: "html inválido" });
-      await mkdir(OUT_DIR, { recursive: true });
-      const dest = join(OUT_DIR, slug + ".html");
-      const tmp = dest + ".tmp";
-      await writeFile(tmp, html, "utf8");
-      await rename(tmp, dest); // grava atômico
-      return json(res, 200, { url: `${BASE_URL}/p/${slug}`, slug });
+      await writeAtomic(join(OUT_DIR, slug + ".html"), injectTracking(html, slug));
+      const out = await saveStore((db) => {
+        let p = body.id && db.proposals.find((x) => x.id === body.id);
+        if (!p) p = db.proposals.find((x) => x.slug === slug);
+        if (!p) { p = { id: body.id || genId(), createdAt: nowIso(), views: 0 }; db.proposals.push(p); }
+        const m = body.meta || {};
+        p.slug = slug;
+        p.clientName = m.clientName || p.clientName || "Sem nome";
+        p.presetId = m.presetId || p.presetId || null;
+        p.author = m.author || p.author || "—";
+        p.price = m.price ?? p.price ?? null;
+        if (m.data) p.data = m.data;
+        p.status = "published";
+        p.publishedAt = nowIso();
+        p.updatedAt = nowIso();
+        return meta(p);
+      });
+      return json(res, 200, { url: `${BASE_URL}/p/${slug}`, slug, id: out.id });
     }
 
-    if (req.method === "GET" && req.url === "/api/list") {
-      let files = [];
-      try { files = await readdir(OUT_DIR); } catch { files = []; }
-      const items = [];
-      for (const f of files) {
-        if (!f.endsWith(".html")) continue;
-        const slug = f.slice(0, -5);
-        let mtime = null;
-        try { mtime = (await stat(join(OUT_DIR, f))).mtime.toISOString(); } catch {}
-        items.push({ slug, url: `${BASE_URL}/p/${slug}`, mtime });
-      }
-      items.sort((a, b) => (b.mtime || "").localeCompare(a.mtime || ""));
+    // legado
+    if (req.method === "GET" && url === "/api/list") {
+      const db = await loadStore();
+      const items = db.proposals.filter((p) => p.slug).map((p) => ({ slug: p.slug, url: `${BASE_URL}/p/${p.slug}`, mtime: p.publishedAt || p.updatedAt }));
       return json(res, 200, { count: items.length, items });
     }
-
-    if (req.method === "POST" && req.url === "/api/delete") {
+    if (req.method === "POST" && url === "/api/delete") {
       const body = await readBody(req);
       const slug = String(body?.slug || "").trim();
       if (!SLUG_RE.test(slug)) return json(res, 400, { error: "slug inválido" });
       try { await unlink(join(OUT_DIR, slug + ".html")); }
       catch (e) { if (e.code === "ENOENT") return json(res, 404, { error: "não existe" }); throw e; }
+      await saveStore((db) => { const p = db.proposals.find((x) => x.slug === slug); if (p) { p.slug = null; p.status = "draft"; } });
       return json(res, 200, { ok: true, slug });
     }
 
@@ -89,7 +200,5 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Bind 0.0.0.0 DENTRO do container (Docker faz o proxy); o mapeamento de host
-// é 127.0.0.1:8132 no compose, então a exposição externa segue só loopback.
 const BIND = process.env.BIND || "0.0.0.0";
-server.listen(PORT, BIND, () => console.log(`publish-server on ${BIND}:${PORT} → ${OUT_DIR}`));
+server.listen(PORT, BIND, () => console.log(`publish-server on ${BIND}:${PORT} → out=${OUT_DIR} store=${STORE}`));
