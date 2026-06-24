@@ -33,6 +33,9 @@
   --r-input: 10px;  /* inputs */
 }
 html, body { margin: 0; padding: 0; background: var(--bg); }
+/* Base de escala = 14px (espelha o Wolf Agency html{font-size:14px}); os rem
+   do shell/dashboard resolvem contra isso. Board/editor usam px → intocados. */
+html { font-size: 14px; }
 body {
   font-family: "DM Sans", system-ui, sans-serif;
   color: var(--ink);
@@ -726,7 +729,7 @@ body {
 /* ─── PAGE HEAD ─── */
 .page { display: flex; flex-direction: column; gap: 22px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.greet { font-size: 1.55rem; font-weight: 600; letter-spacing: -.02em; font-family: Inter, sans-serif; }
+.greet { font-size: 1.6rem; font-weight: 500; letter-spacing: -.02em; font-family: Inter, sans-serif; }
 .page-sub { color: var(--ink-soft); font-size: .9rem; margin-top: 4px; }
 .head-actions { display: flex; align-items: center; gap: 10px; }
 
