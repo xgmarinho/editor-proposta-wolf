@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, ArrowClockwise } from "@phosphor-icons/react";
 import { listProposals, getProposal, patchProposal, deleteProposal } from "./serverStore.js";
+import CardDrawer from "./CardDrawer.jsx";
 
 const COLUMNS = [
   { stage: "rascunho", label: "Rascunho" },
@@ -23,6 +24,7 @@ export default function KanbanBoard({ onOpen, onNew }) {
   const [author, setAuthor] = useState("todos");
   const [dragId, setDragId] = useState(null);
   const [overStage, setOverStage] = useState(null);
+  const [drawer, setDrawer] = useState(null); // item aberto no detalhe/CRM
 
   const refresh = useCallback(() => {
     setErr(null);
@@ -65,7 +67,7 @@ export default function KanbanBoard({ onOpen, onNew }) {
     } catch (e) { alert(e.message || "Falha ao mover."); refresh(); }
   };
 
-  const open = async (id) => {
+  const openEditor = async (id) => {
     try { const p = await getProposal(id); onOpen(p); }
     catch (e) { alert(e.message || "Falha ao abrir."); }
   };
@@ -121,7 +123,7 @@ export default function KanbanBoard({ onOpen, onNew }) {
                       draggable
                       onDragStart={() => setDragId(p.id)}
                       onDragEnd={() => { setDragId(null); setOverStage(null); }}
-                      onClick={() => open(p.id)}>
+                      onClick={() => setDrawer(p)}>
                       <div className="card-top">
                         <b className="card-client">{p.clientName}</b>
                         <button type="button" className="card-del" onClick={(e) => del(e, p.id)} title="Excluir">×</button>
@@ -131,6 +133,7 @@ export default function KanbanBoard({ onOpen, onNew }) {
                         <span>{p.author}</span>
                         {p.views ? <span className="card-views">aberta {p.views}×</span> : <span>{daysAgo(p.publishedAt || p.updatedAt)}</span>}
                       </div>
+                      {p.nextAction?.text && <div className="card-na">{p.nextAction.text}{p.nextAction.date ? ` · ${p.nextAction.date.slice(5).split("-").reverse().join("/")}` : ""}</div>}
                     </article>
                   ))}
                   {cards.length === 0 && <p className="col-empty">—</p>}
@@ -139,6 +142,15 @@ export default function KanbanBoard({ onOpen, onNew }) {
             );
           })}
         </div>
+      )}
+
+      {drawer && (
+        <CardDrawer
+          item={drawer}
+          onClose={() => setDrawer(null)}
+          onEdit={(id) => { setDrawer(null); openEditor(id); }}
+          onChanged={refresh}
+        />
       )}
     </div>
   );
